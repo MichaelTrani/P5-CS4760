@@ -213,7 +213,6 @@ int main(int argc, char* argv[]) {
     } while (true);
 
 
-    sleep(5);
     memory_wipe();
     if (log_file_pointer) {
         fclose(log_file_pointer);
@@ -232,11 +231,12 @@ void parent(int temp) {
 
 void child(char temp) {
 
-    execl("user", "user", temp, '\0');
+    execl("./user", "user", temp, '\0');
 
     // If we get to this point the call failed.
     error_message += "excel failed to execute";
     perror(error_message.c_str());
+    exit(EXIT_FAILURE);
 }
 
 
