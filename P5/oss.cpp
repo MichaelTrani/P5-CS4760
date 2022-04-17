@@ -16,6 +16,7 @@ struct Shmem* shared_mem;
 key_t mkey; // message queue key
 int mqid; // message queue id
 
+static bool five_second_alarm;
 
 
 
@@ -76,9 +77,8 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    else {
-        shared_mem = (struct Shmem*)shmat(sid, NULL, 0);
-    }
+
+    shared_mem = (struct Shmem*)shmat(sid, NULL, 0);
 
 
     // SET UP A MESSAGE QUEUE
@@ -114,7 +114,7 @@ int main(int argc, char* argv[]) {
     // Determines sharable resources
     int num_shared = rand() % (MAX_S_RESOURCE - (MAX_S_RESOURCE - MIN_S_RESOURCE)) + MIN_S_RESOURCE;
     
-    std::cout << num_shared;
+//    std::cout << num_shared;
     
     // Which resources are "sharable"
     while (num_shared != 0) {
@@ -129,34 +129,45 @@ int main(int argc, char* argv[]) {
     unsigned int new_sec = 0;
     unsigned int new_nsec = rand() % 500000000 + 1000000;
 
+    int total_procs = 0;
+    int current_procs = 0;
+    five_second_alarm = false;
+    pid_t childpid;
+
+
 
     // Advance the clock
     shared_mem->nsec = new_nsec; 
-
-    
+    bool temp = true;
     do {
-        break;  // temp stop
+        //break;  // temp stop
+                // Handles breaking from this loop 40 children or more than 5 real time sec
+        //if ((five_second_alarm || total_procs == 40) && current_procs == 0) {
+        //    break;
+        //}
 
-        int garbage = 0;
-        //switch (fork()) {
-        switch(garbage){
+        std::cout << "I'm forking now\n";
+        switch(childpid = fork()){
 
         case -1:
-            error_message += "::Failed to fork.\n";
+            error_message += "Failed to fork";
             perror(error_message.c_str());
             return (1);
 
         case 0:
-            //child(NULL);
+            child(0);
             break;
 
         default:
             //parent(third_process_counter);
             break;
         }
+        temp = false;
 
-    } while (true);
+    } while (temp);
 
+
+    sleep(5);
     memory_wipe();
     if (log_file_pointer) {
         fclose(log_file_pointer);
