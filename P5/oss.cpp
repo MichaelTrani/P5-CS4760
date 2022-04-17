@@ -105,11 +105,41 @@ int main(int argc, char* argv[]) {
     shared_mem->sec = 0;
     shared_mem->nsec = 0;
 
+    // Create descriptors for 20 resources, out of which about 20% should be sharable resources1.
+    for (int j = 0; j < RESOURCE_LIMIT; j++) {
+        shared_mem->initial[j] = rand() % 10 + 1;
+        shared_mem->available[j] = shared_mem->initial[j];
+    }
 
+    // Determines sharable resources
+    int num_shared = rand() % (MAX_S_RESOURCE - (MAX_S_RESOURCE - MIN_S_RESOURCE)) + MIN_S_RESOURCE;
+    
+    std::cout << num_shared;
+    
+    // Which resources are "sharable"
+    while (num_shared != 0) {
+        int random = rand() % (19 + 1) + 0; // Chooses randomly
+        if (shared_mem->sharable[random] == 0) { // Does not repeat a choice
+            shared_mem->sharable[random] = 1;
+            num_shared -= 1;
+        }
+    }
+
+    // Initialize timer
+    unsigned int new_sec = 0;
+    unsigned int new_nsec = rand() % 500000000 + 1000000;
+
+
+    // Advance the clock
+    shared_mem->nsec = new_nsec; 
+
+    
     do {
-        break;  // stop
+        break;  // temp stop
 
-        switch (fork()) {
+        int garbage = 0;
+        //switch (fork()) {
+        switch(garbage){
 
         case -1:
             error_message += "::Failed to fork.\n";
@@ -126,8 +156,6 @@ int main(int argc, char* argv[]) {
         }
 
     } while (true);
-
-
 
     memory_wipe();
     if (log_file_pointer) {

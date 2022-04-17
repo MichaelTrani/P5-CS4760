@@ -45,6 +45,10 @@ struct Shmem {
     int shared_PID = 0;
     unsigned int sec = 0;
     unsigned int nsec = 0;
+    int initial[RESOURCE_LIMIT]; // Number of initialized resources (1-10)
+    int available[RESOURCE_LIMIT]; // Number of available resources
+    int sharable[RESOURCE_LIMIT]; // 1's in the sharable resources indexes
+
 };
 
 struct Mssgbuff {
