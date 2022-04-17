@@ -1,31 +1,32 @@
 /*  Author: Michael Trani
-    April 2022       */
+    April 2022       
+    Process Master      */
 
 #include"p5.h"
 #include"config.h"
 
 std::string error_message;
 std::string warning_message;
+static bool verbose = false;
+static FILE* log_file_pointer;
 
-key_t share_key_1, share_key_2; // shared memory key
-
-struct Shmem* shared_memory_clock;
-
-int shared_memory_ID, msg_queueID; // shared memory id, message queue id
-
-
+key_t skey; // shared memory key
+int sid;    // shared memory id
+struct Shmem* shared_mem;
+key_t mkey; // message queue key
+int mqid; // message queue id
 
 
-struct Mssgbuff Message_Buffer_1, Message_Buffer_2;
+
+
 
 void child(int);
 void parent(int);
-void sigalrm_handler(int signum, siginfo_t* info, void* ptr);
-void sigint_handler(int signum, siginfo_t* info, void* ptr);
-void sigalrm_catcher();
-void sigint_catcher();
+void memory_wipe();
+
 
 int main(int argc, char* argv[]) {
+    srand((unsigned int)time(NULL) + getpid());
 
     // Output for error messages
     error_message = argv[0];
@@ -36,92 +37,73 @@ int main(int argc, char* argv[]) {
     int termination_time = DEFAULT_TIME;
     std::string log_file_name = "logfile";
 
-    while ((option = getopt(argc, argv, "hs:l:")) != -1) {
+    while ((option = getopt(argc, argv, "hvl:s:")) != -1) {
         switch (option) {
         case 'h':
             std::cout << "oss[-h][-s t][-l f]\n" <<
-                "- h Describe how the project should be run and then, terminate.\n" <<
+                "-v verbose logfile\n" <<
                 "-s t Indicate how many maximum seconds before the system terminates\n" <<
-                "- l f Specify a particular name for the log file\n";
+                "-l f Specify a particular name for the log file\n";
             return 0;
-
-        case 's':  // Indicate how many maximum seconds before the system terminates
-            termination_time = atoi(optarg);
+        case 'v': // Specify a particular name for the log file
+            verbose = true;
             break;
-
         case 'l': // Specify a particular name for the log file
             log_file_name = optarg;
             break;
-
+        case 's':  // Indicate how many maximum seconds before the system terminates
+            termination_time = atoi(optarg);
+            break;
         default:
             std::cout << "Unknown input\n";
             return 1;
         }
     }
 
-    // Input validation
-    if (termination_time <= 1) {
-        std::cout << error_message << "::Invalid input:\n\tTime must be greater than 1.\n";
-        return 1;
-    }
-
     // Log file
-    FILE* log_file_pointer;
     log_file_pointer = fopen(log_file_name.c_str(), "w+");
 
-
-        // Clock
-    if ((shared_memory_ID = shmget(share_key_1, SHMEM_SIZE, 0666 | IPC_CREAT)) == -1) {
-        error_message += ": Shared Memory: key1 - shmget";
+    //Shared Memory
+    if ((skey = ftok("makefile", 'a')) == (key_t)-1) {
+        error_message +=" skey/ftok creation failure::";
         perror(error_message.c_str());
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
-    if ((share_key_1 = ftok("makefile", 246811)) == (key_t)-1) {
-        error_message += ": Shared Memory: key1";
+    if ((sid = shmget(skey, sizeof(struct Shmem), IPC_CREAT | 0666)) == -1) {
+        error_message += ": sid/shmget allocation failure::";
         perror(error_message.c_str());
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
-    // This is the clock
-    shared_memory_clock = (struct Shmem*)shmat(shared_memory_ID, NULL, 0);
-    if (shared_memory_clock < 0) {
-
-
+    else {
+        shared_mem = (struct Shmem*)shmat(sid, NULL, 0);
     }
 
-    // Message queue
-    if ((msg_queueID = msgget(share_key_2, 0666 | IPC_CREAT)) == -1) {
-        error_message += ": Shared Memory: key2-msg_queueID";
+
+    // SET UP A MESSAGE QUEUE
+    if ((mkey = ftok("makefile", 'b')) == (key_t)-1) {
+        error_message += ": mkey/ftok: creation failure::";
         perror(error_message.c_str());
-        return 1;
+        memory_wipe();
+        exit(EXIT_FAILURE);
     }
 
-
-    if ((share_key_2 = ftok("makefile", 246812)) == (key_t)-1) {
-        error_message += ": Shared Memory: key2";
+    // Create a queue
+    if ((mqid = msgget(mkey, 0644 | IPC_CREAT)) == -1) {
+        error_message +=": mqid/msgget: allocation failure::";
         perror(error_message.c_str());
-        return 1;
+        memory_wipe();
+        exit(EXIT_FAILURE);
     }
-
-    // Signal Alarm Catching Functions
-    sigalrm_catcher();
-    sigint_catcher();
-
-
-    // Initialize stared memory struct
-    shared_memory_clock->shared_PID = 0;
-    shared_memory_clock->seconds = 0;
-    shared_memory_clock->nano_seconds = 0;
-
-    // Generate time delta
-    srand((unsigned int)time(NULL) + getpid());
 
 
     // Handle time-out
     alarm(termination_time);
 
-
+    // Initialize clock
+    shared_mem->sec = 0;
+    shared_mem->nsec = 0;
 
 
     do {
@@ -143,37 +125,15 @@ int main(int argc, char* argv[]) {
             break;
         }
 
-
-
     } while (true);
 
 
 
-
-
-
-    // cleanup
-    shmdt(shared_memory_clock);
-    if ((shmctl(shared_memory_ID, IPC_RMID, NULL)) == -1) { // Removes the message queue
-        error_message += ": Shared Memory Removal [Program Exit]: shared_memory_ID";
-        perror(error_message.c_str());
-    }
-
-    if (msgctl(msg_queueID, IPC_RMID, NULL) == -1) { // Removes the message queue
-        error_message += ": Shared Memory Removal [Program Exit]: msg_queueID";
-        perror(error_message.c_str());
-    }
-
-    system("sleep 2 && ipcs | grep trani");
+    memory_wipe();
     if (log_file_pointer) {
         fclose(log_file_pointer);
     }
-
-
-
-
-
-
+    system("ipcs | grep trani");
     return 0;
 }
 
@@ -181,23 +141,12 @@ int main(int argc, char* argv[]) {
 
 // Parent Child functions
 void parent(int temp) {
-    // Get the pointer to shared block
-    char* paddr = (char*)(shmat(shared_memory_ID, 0, 0));
-    int* pint = (int*)(paddr);
 
-    /* Write into the shared area. */
-    *pint = temp;
 }
 
 void child(int temp) {
-
-    //pid_t temp = getpid();
-
     std::string slave_pid_arg = std::to_string(temp);  // argument for slave - PID
-    //std::string slave_time = timeFunction();       // argument for slave - time
-    //std::string slave_max = std::to_string(total_processes);    // argument for total num of processes
 
-    //execl("./user", "user", "-i", slave_pid_arg.c_str(), "-t", slave_time.c_str(), "-n", slave_max.c_str(), (char*)NULL);
     execl("user", "user", slave_pid_arg.c_str(), NULL);
 
     // If we get to this point the call failed.
@@ -206,59 +155,15 @@ void child(int temp) {
     std::cout << "excel failed to execute.\n" << std::endl;
 }
 
-// Signal handlers
-void sigalrm_handler(int signum, siginfo_t* info, void* ptr) {
+// Takes the shared memory struct and frees the shared memory
+void memory_wipe() {
 
-    // ignore other interrupt signals
-    signal(SIGINT, SIG_IGN);
-
-    std::cout << warning_message << " Child processes exceeded limit\n";
-
-    // clean shared mem
-    shmdt(shared_memory_clock);
-    shmctl(shared_memory_ID, IPC_RMID, NULL);
-    if (msgctl(msg_queueID, IPC_RMID, NULL) == -1) { // Removes the message queue
-        error_message += ": Shared Memory Removal [sigalrm_handler()]: key2-msg_queueID";
-        perror(error_message.c_str());
+    // Performs control operations on the message queue
+    if (msgctl(mqid, IPC_RMID, NULL) == -1) { // Removes the message queue
+        perror("oss: Error: Could not remove the  message queue");
+        exit(EXIT_FAILURE);
     }
 
-}
-
-void sigint_handler(int signum, siginfo_t* info, void* ptr) {
-    // prevents multiple interrupts
-    signal(SIGINT, SIG_IGN);
-    signal(SIGALRM, SIG_IGN);
-
-    std::cout << warning_message << " Interrupt. Exiting.\n";
-
-    // clean shared mem
-    shmdt(shared_memory_clock);
-    shmctl(shared_memory_ID, IPC_RMID, NULL);
-    if (msgctl(msg_queueID, IPC_RMID, NULL) == -1) { // Removes the message queue
-        error_message += ": Shared Memory Removal [sigint_handler()]: key2-msg_queueID";
-        perror(error_message.c_str());
-    }
-
-}
-
-void sigalrm_catcher() {
-    static struct sigaction _sigact;
-
-    memset(&_sigact, 0, sizeof(_sigact));
-
-    _sigact.sa_sigaction = sigalrm_handler;
-    _sigact.sa_flags = SA_SIGINFO;
-
-    sigaction(SIGALRM, &_sigact, NULL);
-}
-
-void sigint_catcher() {
-    static struct sigaction _sigact;
-
-    memset(&_sigact, 0, sizeof(_sigact));
-
-    _sigact.sa_sigaction = sigint_handler;
-    _sigact.sa_flags = SA_SIGINFO;
-
-    sigaction(SIGINT, &_sigact, NULL);
+    shmdt(shared_mem); // Detaches the shared memory of "shared_mem" from the address space of the calling process
+    shmctl(sid, IPC_RMID, NULL); // Performs the IPC_RMID command on the shared memory segment with ID "sid"
 }

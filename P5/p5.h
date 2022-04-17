@@ -34,38 +34,17 @@
 #include <queue>
 
 // P5 Libraries
-
-
 #define PROC_LIMIT 18
-#define QUANTUM 40000
-#define QUANTUM2 40000*2
-#define QUANTUM3 40000*3
+#define RESOURCE_LIMIT 20
 
+#define MIN_S_RESOURCE (int)(RESOURCE_LIMIT*0.15) // Minimum sharable resource
+#define MAX_S_RESOURCE (int)(RESOURCE_LIMIT*0.25) // Maximum sharable resource
 
-// process control block
-struct Pcb {
-    int simPID; // local simulated pid
-    int priority; // current priority
-    unsigned int total_seconds; // time in system
-    unsigned int total_nanoseconds;
-    unsigned int CPU_seconds; // total CPU time used
-    unsigned int CPU_nanoseconds;
-    unsigned int burst_seconds; // total time used during last burst1
-    unsigned int burst_nanoseconds;
-    unsigned int start_s; // When this process was generated
-    unsigned int start_ns;
-    unsigned int resume_seconds;
-    unsigned int resume_nnanoseconds;
-};
 
 struct Shmem {
     int shared_PID = 0;
-    unsigned int seconds = 0;
-    unsigned int nano_seconds = 0;
-    Pcb process_array[PROC_LIMIT]; // Array storing Process Control Blocks for each child process in the system
-    int process_group_ID;
-
-
+    unsigned int sec = 0;
+    unsigned int nsec = 0;
 };
 
 struct Mssgbuff {
@@ -73,20 +52,6 @@ struct Mssgbuff {
     int flag; 
     int priority;
 };
-
-
-
-
-//Legacy shared memory from previous projects up to 3.
-//key_t shmkey;
-int shmid_shared_num;
-//int* shared_num_ptr;
-#define STR_SZ  sizeof ( std::string )
-#define INT_SZ  sizeof ( int )
-#define PERM (S_IRUSR | S_IWUSR)
-//#define SEMAPHORE_NAME "/semname"
-#define SHMEM_SIZE sizeof(Shmem)
-#define SHMKEY  859047
 
 
 //Grabs time

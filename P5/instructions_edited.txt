@@ -1,27 +1,16 @@
-CS 4760 Operating Systems
-Assignment # 5 Due Date: April 19, 2022
-Resource Management
-Purpose
-The goal of this homework is to learn about resource management inside an operating system.
-
 You will work on the specified strategy to manage resources and take care of any possible starvation/deadlock issues.
-
 
 Task
 In this part of the assignment, you will design and implement a resource management module for our Operating System Simulator oss.
-
 In this project, you will use the deadlock detection and recovery strategy to manage resources.
-
 There is no scheduling in this project, but you will be using shared memory; so be cognizant of possible race conditions.
-
-
-
-This will be your main program and serve as the master process.
 
 You will start the operating system simulator (call the executable oss) as the main process who will fork multiple children at random times.
 The randomness will be simulated by a logical clock that will be updated by oss as well as user processes.
 Thus, the logical clock resides in shared memory and is accessed as a critical resource using a semaphore.
-You should have two unsigned integers for the clock; one will show the time in seconds and the other will show the time in nanoseconds, offset from the beginning of a second.
+You should have two unsigned integers for the clock; 
+one will show the time in seconds and the other will show the time in nanoseconds, 
+offset from the beginning of a second.
 
 In the beginning, oss will allocate shared memory for system data structures, including resource descriptors for each resource.
 
