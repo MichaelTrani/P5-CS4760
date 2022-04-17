@@ -48,6 +48,7 @@ struct Shmem {
     int initial[RESOURCE_LIMIT]; // Number of initialized resources (1-10)
     int available[RESOURCE_LIMIT]; // Number of available resources
     int sharable[RESOURCE_LIMIT]; // 1's in the sharable resources indexes
+    int pgid;
 
 };
 
