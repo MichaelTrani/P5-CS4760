@@ -3,7 +3,7 @@
 
 #include"p5.h"
 void sig_handler(int signal);
-
+void shared_memory();
 
 
 std::string error_message;
@@ -25,7 +25,31 @@ int main(int argc, char* argv[]) {
     error_message = argv[0];
 
     signal(SIGTERM, sig_handler); // Detects signals to terminate this process
+    shared_memory();
 
+
+    // To see if a process has ran for its random value of time
+    int temp_clock_s;
+    int temp_clock_ns;
+
+    // Grab the current clock time (at time of creation)
+    int user_clock_s = shared_mem->sec + 1; // Add 1 second
+    int user_clock_ns = shared_mem->nsec;
+
+
+
+    return 0;
+}
+
+
+// Handles interrupt
+void sig_handler(int signal) { 
+    if (signal == 15) {
+        exit(EXIT_FAILURE);
+    }
+}
+
+void shared_memory() {
     if ((skey = ftok("makefile", 'a')) == (key_t)-1) {
         error_message += "skey/ftok creation failure";
         perror(error_message.c_str());
@@ -36,7 +60,7 @@ int main(int argc, char* argv[]) {
         perror(error_message.c_str());
         exit(EXIT_FAILURE);
     }
-        
+
     shared_mem = (struct Shmem*)shmat(sid, NULL, 0);
 
     /* SET UP MESSAGE QUEUE */
@@ -50,15 +74,5 @@ int main(int argc, char* argv[]) {
         error_message += "mqid/msgget: allocation failure";
         perror(error_message.c_str());
         exit(EXIT_FAILURE);
-    }    return 0;
-
-    return 0;
-}
-
-
-// Handles interrupt
-void sig_handler(int signal) { 
-    if (signal == 15) {
-        exit(EXIT_FAILURE);
-    }
+    }   
 }

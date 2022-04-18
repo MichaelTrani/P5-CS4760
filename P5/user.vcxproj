@@ -79,8 +79,8 @@
     <OutDir>$(ProjectDir)bin\</OutDir>
     <IntDir>$(ProjectDir)obj\</IntDir>
     <TargetExt />
-    <RemoteIntRelDir>$(RemoteProjectRelDir)/obj/</RemoteIntRelDir>
-    <RemoteOutRelDir>$(RemoteProjectRelDir)/bin/</RemoteOutRelDir>
+    <RemoteIntRelDir>$(RemoteProjectRelDir)/</RemoteIntRelDir>
+    <RemoteOutRelDir>$(RemoteProjectRelDir)/</RemoteOutRelDir>
     <RemoteDeployDir>$(RemoteRootDir)/</RemoteDeployDir>
   </PropertyGroup>
   <ItemGroup>

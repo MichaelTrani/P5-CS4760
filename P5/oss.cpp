@@ -26,6 +26,9 @@ void child(char);
 void parent(int);
 void memory_wipe();
 void sig_handle(int signal);
+void increment_clock();
+void memory_maker();
+
 
 int main(int argc, char* argv[]) {
     signal(SIGINT, sig_handle);
@@ -68,39 +71,7 @@ int main(int argc, char* argv[]) {
 
 
 
-    //Shared Memory
-    if ((skey = ftok("makefile", 'a')) == (key_t)-1) {
-        error_message += " skey/ftok creation failure::";
-        perror(error_message.c_str());
-        exit(EXIT_FAILURE);
-    }
-    if ((sid = shmget(skey, sizeof(struct Shmem), IPC_CREAT | 0666)) == -1) {
-        error_message += "sid/shmget allocation failure::";
-        perror(error_message.c_str());
-        exit(EXIT_FAILURE);
-    }
-    else {
-        shared_mem = (struct Shmem*)shmat(sid, NULL, 0);
-    }
-
-
-    shared_mem = (struct Shmem*)shmat(sid, NULL, 0);
-
-
-    // Message queue setup
-    if ((mkey = ftok("makefile", 'b')) == (key_t)-1) {
-        error_message += "mkey/ftok: creation failure::";
-        perror(error_message.c_str());
-        memory_wipe();
-        exit(EXIT_FAILURE);
-    }
-    // Create the queue
-    if ((mqid = msgget(mkey, 0644 | IPC_CREAT)) == -1) {
-        error_message += "mqid/msgget: allocation failure::";
-        perror(error_message.c_str());
-        memory_wipe();
-        exit(EXIT_FAILURE);
-    }
+    memory_maker();
 
     // Handle time-out
     alarm(termination_time);
@@ -143,7 +114,7 @@ int main(int argc, char* argv[]) {
 
     // Advance the clock
     shared_mem->nsec = new_nsec; 
-    bool temp = true;
+
     do {
         
         // Handles breaking from this loop 40 children or more than 5 real time sec
@@ -152,7 +123,7 @@ int main(int argc, char* argv[]) {
         }
 
         // When the shared clock has passed the time to launch a new process, it passes this check
-        if (shared_mem->sec == new_sec && shared_mem->nsec >= new_nsec || shared_mem->sec > new_sec) {
+        if ((shared_mem->sec == new_sec && shared_mem->nsec >= new_nsec) || shared_mem->sec > new_sec) {
             new_sec = 0;
             new_nsec = 0; // Reset the clock to fork new procs
 
@@ -168,7 +139,7 @@ int main(int argc, char* argv[]) {
             }
 
             // If there were open spots, generate a new child proc
-            if (bitv_is_open && total_procs < 40 && !five_second_alarm) { 
+            if ((bitv_is_open && total_procs < 40) && !five_second_alarm) { 
 
                 // For sending the process index through execl
                 char indexPCB[3];
@@ -199,16 +170,28 @@ int main(int argc, char* argv[]) {
                 bitv_is_open = false;
             }
 
-            // Adds the shared clock + the random time from 1-500 ms (to temp variables new_sec and new_nsec)
+            // Advance clock
             new_sec = shared_mem->sec;
             new_nsec = (rand() % 500000000 + 1000000) + shared_mem->nsec;
 
-            // Correct the time to launch the NEXT PROCESS
+            // Adjust time
             while (new_nsec >= 1000000000) {
                 new_nsec -= 1000000000;
                 new_sec += 1;
             }
         }
+
+        increment_clock();
+
+        std::cout << "clock after increment s:" << shared_mem->sec << " ns:" << shared_mem->sec << std::endl;
+
+
+
+
+
+
+
+
 
     } while (true);
 
@@ -220,6 +203,50 @@ int main(int argc, char* argv[]) {
     system("ipcs | grep trani");
     return 0;
 }
+
+
+void memory_maker() {
+    //Shared Memory
+    if ((skey = ftok("makefile", 'a')) == (key_t)-1) {
+        error_message += " skey/ftok creation failure::";
+        perror(error_message.c_str());
+        exit(EXIT_FAILURE);
+    }
+    if ((sid = shmget(skey, sizeof(struct Shmem), IPC_CREAT | 0666)) == -1) {
+        error_message += "sid/shmget allocation failure::";
+        perror(error_message.c_str());
+        exit(EXIT_FAILURE);
+    }
+
+    shared_mem = (struct Shmem*)shmat(sid, NULL, 0);
+
+
+    // Message queue setup
+    if ((mkey = ftok("makefile", 'b')) == (key_t)-1) {
+        error_message += "mkey/ftok: creation failure::";
+        perror(error_message.c_str());
+        memory_wipe();
+        exit(EXIT_FAILURE);
+    }
+    // Create the queue
+    if ((mqid = msgget(mkey, 0644 | IPC_CREAT)) == -1) {
+        error_message += "mqid/msgget: allocation failure::";
+        perror(error_message.c_str());
+        memory_wipe();
+        exit(EXIT_FAILURE);
+    }
+}
+
+// Function to increment the clock
+void increment_clock() {
+    int random_nsec = rand() % 1000000 + 1;
+    shared_mem->nsec += random_nsec;
+    while (shared_mem->nsec >= 1000000000) {
+        shared_mem->nsec -= 1000000000; 
+        shared_mem->sec += 1;
+    }
+}
+
 
 
 
