@@ -28,8 +28,7 @@ std::string error_message;
 static FILE* log_file_pointer;
 static std::string log_file_name = "logfile";
 
-int sid;    /* shared memory id*/
-int mqid; /* message queue id*/
+int sid, mqid;   /* shared memory id and  message queue id*/
 int line_count = 0;
 int simulated_PID = -1;
 
@@ -47,15 +46,11 @@ static int blocked[PROC_LIMIT][2]; /* Stores process index - 0 resource index - 
 
 int main(int argc, char* argv[]) {
     signal(SIGINT, sig_handle);
-    srand((unsigned int)time(NULL) + getpid());
+    //srand((unsigned int)time(NULL) + getpid());
 
-    // Open logfile for writing
     log_file_pointer = fopen(log_file_name.c_str(), "w+");
 
-    // Track the total number of processes created
     int total_procs = 0;
-
-    // Track the current number of running user processes
     int current_procs = 0;
 
     // SEED THE RANDOM GENERATOR USING NANO-SEC's
@@ -63,11 +58,6 @@ int main(int argc, char* argv[]) {
     clock_gettime(CLOCK_MONOTONIC, &ts);
     srand((time_t)ts.tv_nsec);
 
-    // WAITS FOR A SIGINT SIGNAL (CTRL+C from user)
-    signal(SIGINT, sig_handle);
-
-
-    pid_t childpid;
 
     std::string exe_name; 
 
@@ -122,7 +112,7 @@ int main(int argc, char* argv[]) {
 
     // Acts as a static bitvector for which resources are "sharable"
     while (num_shared != 0) {
-        int random = rand() % (19 + 1) + 0; // Chooses randomly
+        int random = rand() % (19 + 1) + 0; 
         if (shared_mem->sharable[random] == 0) { // Does not repeat a choice
             shared_mem->sharable[random] = 1;
             num_shared -= 1;
@@ -142,6 +132,7 @@ int main(int argc, char* argv[]) {
     bool bitv_is_open = false;
     int spawn_nsec;
     int granted_requests = 0;
+    pid_t childpid;
 
 
     while (1) {
@@ -229,12 +220,12 @@ int main(int argc, char* argv[]) {
             if (buffer2.mflag == 1) {
                 current_procs--; // Decrement because a process has terminated
 
-                if (++line_count < MAX_LOG_LINES && verbose) {
+                if (logcheck_trani() && verbose) {
                     fprintf(log_file_pointer, "OSS has acknowledged that P%d is terminating\n", pcb_index);
-                }//fprintf(stderr,"OSS has acknowledged that P%d is terminating\n", pcb_index);
-                if (++line_count < MAX_LOG_LINES && verbose) {
+                }
+                if (logcheck_trani() && verbose) {
                     fprintf(log_file_pointer, "OSS releasing all resources for P%d\n", pcb_index);
-                }//fprintf(stderr,"OSS releasing all resources for P%d\n", pcb_index);
+                }
 
                 // Release all resources for this process, and reset the claims/allocated matrices
                 for (int i = 0; i < RESOURCE_LIMIT; i++) {
@@ -251,10 +242,10 @@ int main(int argc, char* argv[]) {
                         bool safety = safety_algorithm(i, blocked[i][0], blocked[i][1]);
                         if (safety) { // If the algorithm said that this BLOCKED process was okay to be UNBLOCKED,
 
-                            if (++line_count < MAX_LOG_LINES) {
+                            if (logcheck_trani()) {
                                 fprintf(log_file_pointer, "OSS unblocking P%d at time %d:%d\n", i, shared_mem->sec, shared_mem->nsec);
                             }
-                            if (++line_count < MAX_LOG_LINES && verbose) {
+                            if (logcheck_trani() && verbose) {
                                 fprintf(log_file_pointer, "OSS granting P%d request for %d resources of type R%d at time %d:%09d\n", i, blocked[i][1], blocked[i][0], shared_mem->sec, shared_mem->nsec);
                             }
 
@@ -288,11 +279,11 @@ int main(int argc, char* argv[]) {
             // REQUESTING
             else if (buffer2.mflag == 2) {
 
-                if (++line_count < MAX_LOG_LINES && verbose) {
+                if (logcheck_trani() && verbose) {
                     fprintf(log_file_pointer, "OSS has detected process P%d requesting %d resources of type R%d at time %d:%09d\n", pcb_index, buffer2.mresource_count, buffer2.mresource_index, shared_mem->sec, shared_mem->nsec);
                 }
 
-                if (++line_count < MAX_LOG_LINES && verbose) {
+                if (logcheck_trani() && verbose) {
                     fprintf(log_file_pointer, "OSS running deadlock avoidance at time %d:%09d\n", shared_mem->sec, shared_mem->nsec);
                 }
 
@@ -306,7 +297,7 @@ int main(int argc, char* argv[]) {
                 // If the request for this process index was safe, do the following 
                 if (buffer1.msafe == true) {
 
-                    if (++line_count < MAX_LOG_LINES && verbose) {
+                    if (logcheck_trani() && verbose) {
                         fprintf(log_file_pointer, "OSS granting P%d request for %d resources of type R%d at time %d:%09d\n", pcb_index, buffer2.mresource_count, buffer2.mresource_index, shared_mem->sec, shared_mem->nsec);
                     }
 
@@ -324,7 +315,7 @@ int main(int argc, char* argv[]) {
 
                 }// If the request was not safe, do the following         
                 else {
-                    if (++line_count < MAX_LOG_LINES) {
+                    if (logcheck_trani()) {
                         fprintf(log_file_pointer, "OSS blocking P%d Request Denied at time %d:%09d\n", pcb_index, shared_mem->sec, shared_mem->nsec);
                     }
                 }
@@ -332,7 +323,7 @@ int main(int argc, char* argv[]) {
             // RELEASING
             else if (buffer2.mflag == 3) { // Release of resources was requested
 
-                if (++line_count < MAX_LOG_LINES && verbose) {
+                if (logcheck_trani() && verbose) {
                     fprintf(log_file_pointer, "OSS releasing %d resources of type R%d for P%d at time %d:%09d\n", buffer2.mresource_count, buffer2.mresource_index, pcb_index, shared_mem->sec, shared_mem->nsec);
                 }
 
@@ -348,10 +339,10 @@ int main(int argc, char* argv[]) {
                         bool safety = safety_algorithm(i, blocked[i][0], blocked[i][1]);
                         if (safety) { // If the algorithm said that this BLOCKED process was okay to be UNBLOCKED,
 
-                            if (++line_count < MAX_LOG_LINES) {
+                            if (logcheck_trani()) {
                                 fprintf(log_file_pointer, "OSS unblocking P%d at time %d:%d\n", i, shared_mem->sec, shared_mem->nsec);
                             }
-                            if (++line_count < MAX_LOG_LINES && verbose) {
+                            if (logcheck_trani() && verbose) {
                                 fprintf(log_file_pointer, "OSS granting P%d request for %d resources of type R%d at time %d:%09d\n", i, blocked[i][1], blocked[i][0], shared_mem->sec, shared_mem->nsec);
                             }
 

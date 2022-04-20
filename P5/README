@@ -43,4 +43,14 @@ Author
 	March 2022
 
 NOTE
-	This program is very shakey 
+	This program is pretty solid.
+	It will not process statistics, I didn't get that far.
+	I developed a few ideas to develop and test more efficiently.
+	First is a bash script for cleaning out lingering ipc addresses. I was proud of that.
+	The second was attempting to easily convert my comments to output statements to find points of hangup faster. That was a disaster and I do not recommend it.
+	Deadlock avoidance is glued together by hopes and dreams so it performs as such. I don't know if it's even running sometimes.
+	
+	Requests, releases, and termination  work properly.
+	Verbose mode works.
+	Blocking denied requests works.
+	As does unblocking and the safety algorithm.
