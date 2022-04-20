@@ -488,7 +488,7 @@ bool safety_algorithm(int process_index, int resource_index, int resources) {
                     }
                 }
                 else {
-                    fprintf(stderr, "P%d IS BLOCKED and is not the current process index to be checked\n", x); // remove if problem
+                    //fprintf(stderr, "P%d IS BLOCKED and is not the current process index to be checked\n", x); // remove if problem
                     safe_sequence[count++] = -1; /* Negatives are added for blocked processes (to be ignored)*/
                     finished[x] = 1; /* Marked as "finished"*/
                 }
@@ -529,7 +529,6 @@ bool logcheck_trani() {
 
 void matrix_maker() {
 
-    std::cout << "matrix called\n";
     if (logcheck_trani() && verbose) {
         fprintf(log_file_pointer, "Allocation Matrix:\n");
     }
@@ -663,12 +662,6 @@ void countdown_to_interrupt(int seconds, std::string exe_name) {
               /* which specifies the action to be associated with SIGALRM in sigaction() */
     action.sa_flags = SA_RESTART; /* Restartable system call */
     /* SIGALRM below is an asynchronous call, the signal raised when the time interval specified expires  */
-
-    /* The struct "sigaction" on the sigaction(2) manual page and it can be
-   modified to change the action taken by a process on receipt of a
-   specific signal, used below it is able to send a signal to sig_handle()
-   whenever the timer (given by option [-t time]) runs out of time.  */
-
     if (sigaction(SIGALRM, &action, NULL) == -1) {
         /* &action specifies the action to be taken when the timer is done */
         error_message = exe_name + ": Error: Sigaction structure was not initialized properly";

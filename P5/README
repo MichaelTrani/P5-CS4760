@@ -1,0 +1,46 @@
+MASTER(P5)						User Commands
+
+NAME
+	oss - Operating System Simulator.
+COMPILE
+	$ make
+
+SYNOPSIS
+	./oss  [-h] [-v] [-l filename]
+
+DESCRIPTION
+	Linux System Calls and Library Functions
+
+	-h prints help message
+	-v verbose mode
+	-l logfile name alternate
+	
+
+Author
+	Written by Michael Trani for CMP SCI 4760
+	April 2022
+
+
+
+User(P3)						User Commands
+
+NAME
+	User - dummy process
+COMPILE
+	$ make
+
+SYNOPSIS
+	./oss [pid]
+
+DESCRIPTION
+	Linux System Calls and Library Functions
+
+	pid = integer, a pid created by the OSS to identify the dummy process
+	
+
+Author
+	Written by Michael Trani for CMP SCI 4760
+	March 2022
+
+NOTE
+	This program is very shakey 
